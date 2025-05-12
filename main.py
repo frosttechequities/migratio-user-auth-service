@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials 
 from typing import Annotated, Optional
 
@@ -12,6 +13,22 @@ app = FastAPI(
     title="Migratio User Authentication API",
     description="API for user signup, login, and management using Supabase.",
     version="0.1.0"
+)
+
+# CORS Middleware Configuration
+origins = [
+    "http://localhost:5173", # Origin for your local Vite React dev server
+    "http://localhost:3000", # Common alternative local dev port
+    # Add your deployed frontend URL here when you have it, e.g., "https://your-frontend.netlify.app"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins, # Allows specific origins
+    # allow_origins=["*"], # Or, allow all origins (less secure, use for quick testing if needed)
+    allow_credentials=True,
+    allow_methods=["*"], # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"], # Allows all headers
 )
 
 # Using HTTPBearer for simpler token input in Swagger UI
