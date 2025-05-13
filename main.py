@@ -8,8 +8,9 @@ from models import UserCreate, UserLogin, TokenData, UserResponse
 from supabase_client import get_supabase_client, Client
 from gotrue.errors import AuthApiError
 
-# Import profile routes
+# Import routes
 from profile_routes import router as profile_router
+from dashboard_routes import router as dashboard_router
 
 app = FastAPI(
     title="Migratio User Authentication API",
@@ -162,8 +163,9 @@ async def read_users_me(current_user: UserResponse = Depends(get_current_user)):
     # If it succeeds, current_user is a valid UserResponse object.
     return current_user
 
-# Include the profile routes
+# Include the routes
 app.include_router(profile_router)
+app.include_router(dashboard_router)
 
 # To run this app locally (from the project root, assuming user_auth_api is a subdir):
 # 1. Create a .env file in the user_auth_api directory:
