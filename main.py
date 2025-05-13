@@ -1,13 +1,15 @@
 from fastapi import FastAPI, HTTPException, status, Depends
-from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials 
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated, Optional
 
-# Assuming models.py and supabase_client.py are in the same directory (user_auth_api)
+# Import models and clients
 from models import UserCreate, UserLogin, TokenData, UserResponse
-from supabase_client import get_supabase_client, Client # Renamed supabase to Client for clarity
-# from supabase.lib.client_options import ClientOptions # For type hinting if needed - usually not needed for basic client
-from gotrue.errors import AuthApiError # Changed import for Supabase v2
+from supabase_client import get_supabase_client, Client
+from gotrue.errors import AuthApiError
+
+# Import profile routes
+from profile_routes import router as profile_router
 
 app = FastAPI(
     title="Migratio User Authentication API",
@@ -17,18 +19,18 @@ app = FastAPI(
 
 # CORS Middleware Configuration
 origins = [
-    "http://localhost:5173", # Origin for your local Vite React dev server
-    "http://localhost:3000", # Common alternative local dev port
-    # Add your deployed frontend URL here when you have it, e.g., "https://your-frontend.netlify.app"
+    "http://localhost:5173",  # Origin for your local Vite React dev server
+    "http://localhost:3000",  # Common alternative local dev port
+    "https://astonishing-smakager-d8c61d.netlify.app",  # Deployed frontend URL
+    "https://remarkable-fairy-b57541.netlify.app",  # Alternative deployed frontend URL
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Allows specific origins
-    # allow_origins=["*"], # Or, allow all origins (less secure, use for quick testing if needed)
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], # Allows all methods (GET, POST, etc.)
-    allow_headers=["*"], # Allows all headers
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Using HTTPBearer for simpler token input in Swagger UI
@@ -48,7 +50,7 @@ async def get_current_user(
             detail="Invalid authentication scheme. Only Bearer is supported.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     token = auth.credentials
     try:
         user_response = supabase.auth.get_user(token) # Use the token (auth.credentials)
@@ -90,14 +92,14 @@ async def signup(user_data: UserCreate, supabase: Client = Depends(get_supabase_
             # Supabase might require email confirmation depending on your project settings.
             # The user object is returned upon successful signup.
             return UserResponse(
-                id=response.user.id, 
+                id=response.user.id,
                 email=response.user.email,
                 created_at=str(response.user.created_at) if response.user.created_at else None
             )
         elif response.session is None and response.user is None: # Common for email confirmation pending
              raise HTTPException(
                 status_code=status.HTTP_200_OK, # Or 202 Accepted
-                detail="Signup successful, please check your email for confirmation." 
+                detail="Signup successful, please check your email for confirmation."
                         if supabase.auth.settings.confirm else "Signup successful but no user object returned."
             )
         else: # Should not happen if no error is raised by sign_up
@@ -124,7 +126,7 @@ async def login(form_data: UserLogin, supabase: Client = Depends(get_supabase_cl
             )
         else: # Should not happen if no error is raised by sign_in
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Login failed, user or session not found.")
-            
+
     except AuthApiError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=e.message, headers={"WWW-Authenticate": "Bearer"})
     except Exception as e:
@@ -160,6 +162,9 @@ async def read_users_me(current_user: UserResponse = Depends(get_current_user)):
     # If it succeeds, current_user is a valid UserResponse object.
     return current_user
 
+# Include the profile routes
+app.include_router(profile_router)
+
 # To run this app locally (from the project root, assuming user_auth_api is a subdir):
 # 1. Create a .env file in the user_auth_api directory:
 #    SUPABASE_URL="your_supabase_project_url"
@@ -170,5 +175,5 @@ async def read_users_me(current_user: UserResponse = Depends(get_current_user)):
 
 if __name__ == "__main__":
     print("To run this application, use Uvicorn: ")
-    print("Example: uvicorn user_auth_api.main:app --reload --port 8002")
+    print("Example: uvicorn main:app --reload --port 8002")
     print("Ensure your .env file with SUPABASE_URL and SUPABASE_ANON_KEY is in the user_auth_api directory.")
